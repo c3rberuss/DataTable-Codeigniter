@@ -24,6 +24,12 @@ class Dt{
 
 		$ci =& get_instance();
 
+		$show_correlative = false;
+
+		if(array_key_exists("show_correlative", $config)){
+			$show_correlative = $config['show_correlative'];
+		}
+
 		$table = $config['table'];
 		$fields = $config['fields'];
 
@@ -100,17 +106,20 @@ class Dt{
 		$results = $ci->db->get($table);
 		$data = array();
 
+		if ($show_correlative){
+			$i = 1;
+		}
+
 		foreach ($results->result() as $rows) {
 
 			$rows_array = Dt::objectToArray($rows);
 
 			foreach ($actions as $key => $value) {
 				$actions[$key]['url'] = str_replace("{:id}", $rows_array[$id], $actions[$key]['url']);
+				$actions[$key]['url'] = $ci->router->fetch_class()."/".$actions[$key]['url'];
 
-				if(array_key_exists("custom", $actions[$key])){
-					if ($actions[$key]['custom'] === TRUE) {
-						$actions[$key]['value'] = $rows_array[$actions[$key]['custom_field']];
-					}
+				if(array_key_exists("formatter", $actions[$key])){
+					$actions[$key]['value'] = $rows_array[$actions[$key]['field']];
 				}
 			}
 
@@ -119,12 +128,21 @@ class Dt{
 
 			foreach (array_keys($fields) as $field) {
 
-				$formatted = $fields[$field]($rows_array[$field]);
+				if($field == $id && $show_correlative){
+					$formatted = $i;
+				}else{
+					$formatted = $fields[$field]($rows_array[$field]);
+				}
+
 				array_push($data_tmp, $formatted);
 			}
 
 			array_push($data_tmp, $ci->load->view("components/actions_dt", array("actions" => $actions), TRUE));
 			array_push($data, $data_tmp);
+
+			if($show_correlative){
+				$i++;
+			}
 		}
 		$count = Dt::totalRows($ci, $table);
 
